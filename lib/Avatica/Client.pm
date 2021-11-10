@@ -241,6 +241,20 @@ sub tables {
   return ($res, $response);
 }
 
+sub type_info {
+  my ($self, $connection_id) = @_;
+
+  my $t = Avatica::Client::Protocol::TypeInfoRequest->new;
+  $t->set_connection_id($connection_id);
+  my $msg = Avatica::Client::Protocol::TypeInfoRequest->encode($t);
+
+  my ($res, $response) = $self->apply('TypeInfoRequest', $msg);
+  return ($res, $response) unless $res;
+
+  $response = Avatica::Client::Protocol::ResultSetResponse->decode($response);
+  return ($res, $response);
+}
+
 sub connection_sync {
   my ($self, $connection_id, $props) = @_;
 
@@ -508,6 +522,10 @@ message ColumnsRequest {
   bool   has_schema_pattern = 7;
   bool   has_table_name_pattern = 8;
   bool   has_column_name_pattern = 9;
+}
+
+message TypeInfoRequest {
+  string connection_id = 1;
 }
 
 message SchemasRequest {
