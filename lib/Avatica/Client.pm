@@ -259,6 +259,20 @@ sub type_info {
   return ($res, $response);
 }
 
+sub table_types {
+  my ($self, $connection_id) = @_;
+
+  my $t = Avatica::Client::Protocol::TableTypesRequest->new;
+  $t->set_connection_id($connection_id);
+  my $msg = Avatica::Client::Protocol::TableTypesRequest->encode($t);
+
+  my ($res, $response) = $self->apply('TableTypesRequest', $msg);
+  return ($res, $response) unless $res;
+
+  $response = Avatica::Client::Protocol::ResultSetResponse->decode($response);
+  return ($res, $response);
+}
+
 sub connection_sync {
   my ($self, $connection_id, $props) = @_;
 
@@ -575,6 +589,11 @@ message SchemasRequest {
   string connection_id = 3;
   bool has_catalog = 4;
   bool has_schema_pattern = 5;
+}
+
+// Request for Meta#getTableTypes()
+message TableTypesRequest {
+  string connection_id = 1;
 }
 
 // Request for Request for Meta#getTables(String, org.apache.calcite.avatica.Meta.Pat,
