@@ -1,5 +1,7 @@
 package Avatica::Client;
 
+# ABSTRACT: Client for Apache Calcite Avatica
+
 use strict;
 use warnings;
 use Carp 'croak';
@@ -10,6 +12,8 @@ use Google::ProtocolBuffers::Dynamic;
 
 use constant MAX_RETRIES => 1;
 use constant CLASS_REQUEST_PREFIX => 'org.apache.calcite.avatica.proto.Requests$';
+
+our $VERSION = '0.001';
 
 sub new {
   my ($class, %params) = @_;
