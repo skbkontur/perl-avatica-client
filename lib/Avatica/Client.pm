@@ -95,7 +95,7 @@ sub parse_error {
       message => $error->get_error_message,
       severity => $error->get_severity,
       error_code => $error->get_error_code,
-      sql_state => => $error->get_sql_state
+      sql_state => $error->get_sql_state
     }
   };
   $msg->{protocol}{exceptions} = $error->get_exceptions_list if $error->get_has_exceptions;
