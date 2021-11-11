@@ -8,7 +8,7 @@ use Carp 'croak';
 use HTTP::Tiny;
 use Time::HiRes qw/sleep/;
 
-use Google::ProtocolBuffers::Dynamic;
+use Google::ProtocolBuffers::Dynamic 0.30;
 
 use constant MAX_RETRIES => 1;
 use constant CLASS_REQUEST_PREFIX => 'org.apache.calcite.avatica.proto.Requests$';
