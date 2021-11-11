@@ -293,6 +293,34 @@ sub connection_sync {
   return ($res, $response);
 }
 
+sub commit {
+  my ($self, $connection_id) = @_;
+
+  my $c = Avatica::Client::Protocol::CommitRequest->new;
+  $c->set_connection_id($connection_id);
+  my $msg = Avatica::Client::Protocol::CommitRequest->encode($c);
+
+  my ($res, $response) = $self->apply('CommitRequest', $msg);
+  return ($res, $response) unless $res;
+
+  $response = Avatica::Client::Protocol::CommitResponse->decode($response);
+  return ($res, $response);
+}
+
+sub rollback {
+  my ($self, $connection_id) = @_;
+
+  my $r = Avatica::Client::Protocol::RollbackRequest->new;
+  $r->set_connection_id($connection_id);
+  my $msg = Avatica::Client::Protocol::RollbackRequest->encode($r);
+
+  my ($res, $response) = $self->apply('RollbackRequest', $msg);
+  return ($res, $response) unless $res;
+
+  $response = Avatica::Client::Protocol::RollbackResponse->decode($response);
+  return ($res, $response);
+}
+
 sub create_statement {
   my ($self, $connection_id) = @_;
 
@@ -495,61 +523,72 @@ syntax = "proto3";
 
 package Avatica.Client.Protocol;
 
+// Request for Meta#openConnection(Meta.ConnectionHandle, Map<String, String>)
 message OpenConnectionRequest {
   string connection_id = 1;
   map<string, string> info = 2;
 }
 
+// Response to OpenConnectionRequest
 message OpenConnectionResponse {
   RpcMetadata metadata = 1;
 }
 
+// Request for Meta#closeConnection(Meta.ConnectionHandle)
 message CloseConnectionRequest {
   string connection_id = 1;
 }
 
+// Response to CloseConnectionRequest
 message CloseConnectionResponse {
   RpcMetadata metadata = 1;
 }
 
+// Request for Meta#getCatalogs()
 message CatalogsRequest {
   string connection_id = 1;
 }
 
+// Request for Meta#getColumns(String, org.apache.calcite.avatica.Meta.Pat,
+//   org.apache.calcite.avatica.Meta.Pat, org.apache.calcite.avatica.Meta.Pat).
 message ColumnsRequest {
   string catalog = 1;
   string schema_pattern = 2;
   string table_name_pattern = 3;
   string column_name_pattern = 4;
   string connection_id = 5;
-  bool   has_catalog = 6;
-  bool   has_schema_pattern = 7;
-  bool   has_table_name_pattern = 8;
-  bool   has_column_name_pattern = 9;
+  bool has_catalog = 6;
+  bool has_schema_pattern = 7;
+  bool has_table_name_pattern = 8;
+  bool has_column_name_pattern = 9;
 }
 
+// Request for Meta#getTypeInfo()
 message TypeInfoRequest {
   string connection_id = 1;
 }
 
+// Request for Meta#getSchemas(String, org.apache.calcite.avatica.Meta.Pat)}
 message SchemasRequest {
   string catalog = 1;
   string schema_pattern = 2;
   string connection_id = 3;
-  bool   has_catalog = 4;
-  bool   has_schema_pattern = 5;
+  bool has_catalog = 4;
+  bool has_schema_pattern = 5;
 }
 
+// Request for Request for Meta#getTables(String, org.apache.calcite.avatica.Meta.Pat,
+//   org.apache.calcite.avatica.Meta.Pat, java.util.List)
 message TablesRequest {
   string catalog = 1;
   string schema_pattern = 2;
   string table_name_pattern = 3;
   repeated string type_list = 4;
-  bool has_type_list = 6;
+  bool has_type_list = 6; // Having an empty type_list is distinct from a null type_list
   string connection_id = 7;
-  bool   has_catalog = 8;
-  bool   has_schema_pattern = 9;
-  bool   has_table_name_pattern = 10;
+  bool has_catalog = 8;
+  bool has_schema_pattern = 9;
+  bool has_table_name_pattern = 10;
 }
 
 message ConnectionSyncRequest {
@@ -557,35 +596,62 @@ message ConnectionSyncRequest {
   ConnectionProperties conn_props = 2;
 }
 
+// Response to ConnectionSyncRequest
 message ConnectionSyncResponse {
   ConnectionProperties conn_props = 1;
   RpcMetadata metadata = 2;
 }
 
+// Request for Meta#getDatabaseProperties()
 message DatabasePropertyRequest {
   string connection_id = 1;
 }
 
+// Response for Meta#getDatabaseProperties()
 message DatabasePropertyResponse {
-  repeated DatabaseProperty props = 1;
+  repeated DatabasePropertyElement props = 1;
   RpcMetadata metadata = 2;
 }
 
+// Request to invoke a commit on a Connection
+message CommitRequest {
+  string connection_id = 1;
+}
+
+// Response to a commit request
+message CommitResponse {
+
+}
+
+// Request to invoke rollback on a Connection
+message RollbackRequest {
+  string connection_id = 1;
+}
+
+// Response to a rollback request
+message RollbackResponse {
+
+}
+
+// Request for Meta#createStatement(Meta.ConnectionHandle)
 message CreateStatementRequest {
   string connection_id = 1;
 }
 
+// Response to CreateStatementRequest
 message CreateStatementResponse {
   string connection_id = 1;
   uint32 statement_id = 2;
   RpcMetadata metadata = 3;
 }
 
+// Request for Meta#closeStatement(Meta.StatementHandle)
 message CloseStatementRequest {
   string connection_id = 1;
   uint32 statement_id = 2;
 }
 
+// Response to CloseStatementRequest
 message CloseStatementResponse {
   RpcMetadata metadata = 1;
 }
@@ -599,74 +665,84 @@ message PrepareAndExecuteRequest {
   int32 first_frame_max_size = 6;
 }
 
+// Request to prepare and execute a collection of sql statements.
 message PrepareAndExecuteBatchRequest {
   string connection_id = 1;
   uint32 statement_id = 2;
   repeated string sql_commands = 3;
 }
 
+// Request for Meta.prepare(Meta.ConnectionHandle, String, long)
 message PrepareRequest {
   string connection_id = 1;
   string sql = 2;
-  uint64 max_row_count = 3; // Deprecated!
-  int64 max_rows_total = 4;
+  uint64 max_row_count = 3; // Deprecated
+  int64 max_rows_total = 4; // The maximum number of rows that will be allowed for this query
 }
 
+// Response to PrepareRequest
 message PrepareResponse {
   StatementHandle statement = 1;
   RpcMetadata metadata = 2;
 }
 
+// Request for Meta#execute(Meta.ConnectionHandle, list, long)
 message ExecuteRequest {
   StatementHandle statementHandle = 1;
   repeated TypedValue parameter_values = 2;
-  uint64 deprecated_first_frame_max_size = 3;
+  uint64 deprecated_first_frame_max_size = 3; // Deprecated, use the signed int instead.
   bool has_parameter_values = 4;
-  int32 first_frame_max_size = 5;
+  int32 first_frame_max_size = 5; // The maximum number of rows to return in the first Frame
 }
 
+// Response to PrepareAndExecuteRequest
 message ExecuteResponse {
   repeated ResultSetResponse results = 1;
-  bool missing_statement = 2;
+  bool missing_statement = 2; // Did the request fail because of no-cached statement
   RpcMetadata metadata = 3;
 }
 
 message ExecuteBatchRequest {
   string connection_id = 1;
   uint32 statement_id = 2;
-  repeated UpdateBatch updates = 3;
+  repeated UpdateBatch updates = 3; // A batch of updates is a list<list<typevalue>>
 }
 
+// Response to a batch update request
 message ExecuteBatchResponse {
   string connection_id = 1;
   uint32 statement_id = 2;
-  repeated uint32 update_counts = 3;
-  bool missing_statement = 4;
+  repeated uint64 update_counts = 3;
+  bool missing_statement = 4; // Did the request fail because of no-cached statement
   RpcMetadata metadata = 5;
 }
 
+// Response that contains a result set.
 message ResultSetResponse {
   string connection_id = 1;
   uint32 statement_id = 2;
   bool own_statement = 3;
   Signature signature = 4;
   Frame first_frame = 5;
-  uint64 update_count = 6;
+  uint64 update_count = 6; // -1 for normal result sets, else this response contains a dummy result set
+                                    // with no signature nor other data.
   RpcMetadata metadata = 7;
 }
 
+// Request for Meta#fetch(Meta.StatementHandle, List, long, int)
 message FetchRequest {
   string connection_id = 1;
   uint32 statement_id = 2;
   uint64 offset = 3;
-  uint32 fetch_max_row_count = 4; // Deprecated!
+  uint32 fetch_max_row_count = 4; // Maximum number of rows to be returned in the frame. Negative means no limit. Deprecated!
   int32 frame_max_size = 5;
 }
 
+// Response to FetchRequest
 message FetchResponse {
   Frame frame = 1;
-  bool missing_statement = 2;
-  bool missing_results = 3;
+  bool missing_statement = 2; // Did the request fail because of no-cached statement
+  bool missing_results = 3; // Did the request fail because of a cached-statement w/o ResultSet
   RpcMetadata metadata = 4;
 }
 
@@ -678,18 +754,19 @@ message SyncResultsRequest {
 }
 
 message SyncResultsResponse {
-  bool missing_statement = 1;
-  bool more_results = 2;
+  bool missing_statement = 1; // Server doesn't have the statement with the ID from the request
+  bool more_results = 2; // Should the client fetch() to get more results
   RpcMetadata metadata = 3;
 }
 
+// Send contextual information about some error over the wire from the server.
 message ErrorResponse {
-  repeated string exceptions = 1;
-  bool has_exceptions = 7;
-  string error_message = 2;
+  repeated string exceptions = 1; // exception stacktraces, many for linked exceptions.
+  bool has_exceptions = 7; // are there stacktraces contained?
+  string error_message = 2; // human readable description
   Severity severity = 3;
-  uint32 error_code = 4;
-  string sql_state = 5;
+  uint32 error_code = 4; // numeric identifier for error
+  string sql_state = 5; // five-character standard-defined value
   RpcMetadata metadata = 6;
 }
 
@@ -757,6 +834,7 @@ message MetaDataOperationArgument {
   ArgumentType type = 6;
 }
 
+// Each command is a list of TypedValues
 message UpdateBatch {
   repeated TypedValue parameter_values = 1;
 }
@@ -765,6 +843,12 @@ message UpdateBatch {
 message DatabaseProperty {
   string name = 1;
   repeated string functions = 2;
+}
+
+message DatabasePropertyElement {
+  DatabaseProperty key = 1;
+  TypedValue value = 2;
+  RpcMetadata metadata = 3;
 }
 
 // Details about a connection
@@ -952,8 +1036,9 @@ enum Rep {
   MULTISET = 29;
 }
 
+// Generic metadata for the server to return with each response.
 message RpcMetadata {
-  string server_address = 1;
+  string server_address = 1; // The host:port of the server
 }
 
 // Message which encapsulates another message to support a single RPC endpoint
