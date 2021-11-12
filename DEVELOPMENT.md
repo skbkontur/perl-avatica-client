@@ -1,10 +1,10 @@
-# INSTALL DEPENDENCIES (based on DEBIAN/UBUNTU packages names)
+# INSTALL DEPENDENCIES manully (based on DEBIAN/UBUNTU packages names)
 
 ## OS-LEVEL DEPENDENCES
 
 Install packages:
 
-    apt-get install libprotobuf-dev libprotoc-dev g++ libstdc++6 libstdc++-8-dev # (or more newer libstdc++-<NUMBER>-dev)
+    apt-get install libprotobuf-dev libprotoc-dev g++ make openssl libssl-dev libstdc++6 libstdc++-8-dev # (or more newer libstdc++-<NUMBER>-dev)
 
 Add path to `cc1` to env var `$PATH`:
 
@@ -22,6 +22,15 @@ Install package for spell check:
 
     cpanm --installdeps --with-develop .        # module dependencies
     dzil authordeps --missing | cpanm           # to install dzil dependencies
+
+# INSTALL DEPENDENCIES via docker-compose
+
+    docker-compose up -d                        # build and run
+
+    docker-compose exec avatica-client bash     # to get inside the avatica-client container
+    docker-compose exec hpqs bash               # to get inside the hbase+phoenix+queryserver container
+    docker-compose exec hpqs /hpqs/hbase-1.4.14/bin/hbase shell                        # to get hbase shell
+    docker-compose exec hpqs /hpqs/apache-phoenix-4.15.0-HBase-1.4-bin/bin/sqlline.py  # to get phoenix console
 
 # SETUP
 
