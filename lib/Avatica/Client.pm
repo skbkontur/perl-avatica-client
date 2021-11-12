@@ -1067,3 +1067,515 @@ message WireMessage {
   string name = 1;
   bytes wrapped_message = 2;
 }
+
+__END__
+
+=head1 SYNOPSIS
+
+  use Avatica::Client;
+  my $connection_id = 'number-or-uuid-or-any-string';
+  my $client = Avatica::Client->new(url => 'http://172.17.0.1:8765');
+  my ($res, $connection) = $client->open_connection($connection_id);
+  die "can't open connection: $connection->{message}" if !$res;
+  ($res, my $prepare) = $client->prepare($connection_id, 'SELECT * FROM table WERE id = ? LIMIT 10');
+  die "can't prepare query: $prepare->{message}" if !$res;
+  my $statement = $prepare->get_statement;
+  my $statement_id = $statement->get_id;
+  my $signature = $statement->get_signature;
+  my $tv = Avatica::Client::Protocol::TypedValue->new;
+  $tv->set_number_value(1);
+  $tv->set_type(Avatica::Client::Protocol::Rep::LONG());
+  ($res, my $execute) = $client->execute($connection_id, $statement_id, $signature, [$tv], 2);
+  die "can't execute: $execute->{message}" if !$res;
+  ($res, my $fetch) = $client->fetch($connection_id, $statement_id, undef, 8);
+  die "can't fetch: $fetch->{message}" if !$res;
+  ($res, my $close_state) = $client->close_statement($connection_id, $statement_id);
+  die "close statement error: $close_state->{message}" if !$res;
+  ($res, $r) = $client->close_connection($connection_id);
+  die "close connection error: $r->{message}" if !$res;
+
+=head1 DESCRIPTION
+
+Client for Apache Calcite Avatica which based on HTTP and Google Protobuf.
+
+
+=head2 new
+
+Creates object of the Avatica::Client.
+
+  my $client = Avatica::Client->new(url => 'http://127.0.0.1:8765', max_retries => 10);
+
+=head3 Parameters
+
+=head4 url
+
+URL to send request (required).
+
+=head4 max_retries
+
+Number of retires (default 3).
+
+=head4 ua
+
+HTTP::Tiny user agent.
+
+
+=head2 open_connection
+
+Open new connection.
+
+  my ($res, $connection) = $client->open_connection($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Any generated string.
+
+
+=head2 close_connection
+
+Close connection.
+
+  my ($res, $data) = $client->close_connection($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 catalog
+
+This request is used to fetch the available catalog names in the database.
+
+  my ($res, $catalog) = $client->catalog($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 columns
+
+This request is used to fetch columns in the database given some optional filtering criteria.
+
+  my ($res, $columns) = $client->columns($connection_id, $catalog, $schema_pattern, $table_pattern, $column_pattern);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 catalog
+
+The name of a catalog to limit returned columns.
+
+=head4 schema_pattern
+
+A Java Pattern against schemas to limit returned columns.
+
+=head4 table_pattern
+
+A Java Pattern against table names to limit returned columns.
+
+=head4 column_pattern
+
+A Java Pattern against column names to limit returned columns.
+
+
+=head2 database_property
+
+This request is used to fetch all database properties.
+
+  my ($res, $prop) = $client->database_property($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 schemas
+
+This request is used to fetch the schemas matching the provided criteria in the database.
+
+  my ($res, $schemas) = $client->schemas($connection_id, $catalog, $schema_pattern);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 catalog
+
+The name of the catalog to fetch the schema from.
+
+=head4 schema_pattern
+
+A Java pattern of schemas to fetch.
+
+
+=head2 tables
+
+This request is used to fetch the tables available in this database filtered by the provided criteria.
+
+  my ($res, $tables) = $client->tables($connection_id, $catalog, $schema_pattern, $table_pattern, $type_list);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 catalog
+
+The name of a catalog to restrict fetched tables.
+
+=head4 schema_pattern
+
+A Java Pattern representing schemas to include in fetched tables.
+
+=head4 table_pattern
+
+A Java Pattern representing table names to include in fetched tables.
+
+=head4 type_list
+
+A list of table types used to restrict fetched tables.
+
+
+=head2 type_info
+
+This request is used to fetch the types available in this database.
+
+  my ($res, $type_info) = $client->type_info($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 table_types
+
+This request is used to fetch the table types available in this database.
+
+  my ($res, $table_types) = $client->table_types($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 connection_sync
+
+This request is used to ensure that the client and server have a consistent view of the database properties.
+Returns the properties that were applied on the server.
+
+  my ($res, $connection_sync) = $client->connection_sync($connection_id, {
+    AutoCommit => 0,
+    ReadOnly => 0,
+    TransactionIsolation => 2,
+    Catalog => '',
+    Schema => ''
+  });
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 prop
+
+This hash represents the properties for a given JDBC Connection.
+AutoCommit is a boolean denoting if autoCommit is enabled for transactions.
+ReadOnly is a boolean denoting if a JDBC connection is read-only.
+TransactionIsolation is an integer which denotes the level of transactions isolation per the JDBC specification:
+  0 = No transactions.
+  1 = READ_UNCOMMITTED.
+  2 = READ_COMMITTED.
+  4 = REPEATABLE_READ.
+  8 = SERIALIZABLE.
+Catalog is the name of a catalog to use when fetching connection properties.
+Schema is the name of the schema to use when fetching connection properties.
+
+
+=head2 commit
+
+This request is used to issue a commit on the Connection in the Avatica server identified by the given ID.
+
+  my ($res, $commit) = $client->commit($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 rollback
+
+This request is used to issue a rollback on the Connection in the Avatica server identified by the given ID.
+
+  my ($res, $rollback) = $client->rollback($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 create_statement
+
+This request is used to create a new Statement in the Avatica server.
+
+  my ($res, $statement) = $client->create_statement($connection_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+
+=head2 prepare_and_execute
+
+This request is used as a short-hand for create a Statement and fetching the first batch of results in a single call without any parameter substitution.
+
+  my ($res, $result) = $client->prepare_and_execute($connection_id, $statement_id, $sql, $max_rows_total, $first_frame_max_size);
+
+  my ($res, $statement) = $client->create_statement($connection_id);
+  ($res, my $result) = $client->prepare_and_execute($connection_id, $statement->get_statement_id, 'SELECT * FROM TABLE', undef, 100);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 statement_id
+
+The identifier of the created statement (required).
+
+=head4 sql
+
+A SQL statement (required).
+
+=head4 max_rows_total
+
+The maximum number of rows which this query should return.
+
+=head4 first_frame_max_size
+
+The maximum number of rows which should be included in the first Frame.
+
+
+=head2 close_statement
+
+This request is used to close the Statement object in the Avatica server identified by the given IDs.
+
+  my ($res, $result) = $client->close_statement($connection_id, $statement_id);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 statement_id
+
+The identifier of the statement to close (required).
+
+
+=head2 prepare
+
+This request is used to create create a new Statement with the given query in the Avatica server.
+
+  my ($res, $prepare) = $client->prepare($connection_id, $sql, $max_rows_total);
+  my ($res, $prepare) = $client->prepare($connection_id, 'SELECT * FROM TABLE');
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 sql
+
+A SQL statement (required).
+
+=head4 max_rows_total
+
+The maximum number of rows which this query should return.
+
+
+=head2 execute
+
+This request is used to execute a PreparedStatement, optionally with values to bind to the parameters in the Statement.
+
+  my ($res, $execute) = $client->execute($connection_id, $statement_id, $signature, $param_values, $first_frame_max_size);
+
+  my ($res, $prepare) = $client->prepare($connection_id, 'SELECT * FROM table WHERE f1 = ? AND f2 = ?');
+  my $val1 = Avatica::Client::Protocol::TypedValue->new;
+  $val1->set_number_value(2);
+  $val1->set_type(Avatica::Client::Protocol::Rep::LONG());
+  my $val2 = Avatica::Client::Protocol::TypedValue->new;
+  $val2->set_number_value(2);
+  $val2->set_type(Avatica::Client::Protocol::Rep::LONG());
+  my ($res, $execute) = $client->execute($connection_id, $prepare->get_statement->get_id, $prepare->get_statement->get_signature, [$val1, $val2]);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 statement_id
+
+The identifier of the created statement (required).
+
+=head4 signature
+
+A Signature object for the statement (required).
+
+=head4 param_values
+
+The TypedValue for each parameter on the prepared statement.
+
+=head4 first_frame_max_size
+
+The maximum number of rows to return in the first Frame.
+
+
+=head2 prepare_and_execute_batch
+
+This request is used as short-hand to create a Statement and execute a B<batch of updates> against that Statement.
+
+  my ($res, $result) = $client->prepare_and_execute_batch($connection_id, $statement_id, $sqls);
+
+  my ($res, $statement) = $client->create_statement($connection_id);
+  ($res, my $result) = $client->prepare_and_execute_batch($connection_id, $statement->get_statement_id, [
+    'UPSERT INTO table(F1, F2) values (1, 2)',
+    'UPSERT INTO table(F1, F2) values (2, 3)',
+    'UPSERT INTO table(F1, F2) values (3, 4)'
+  ]);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 statement_id
+
+The identifier of the created statement (required).
+
+=head4 sqls
+
+A list of SQL commands to execute a B<batch of updates> (required).
+
+
+=head2 execute_batch
+
+This request is used to execute a B<batch of updates> against a PreparedStatement.
+
+  my ($res, $result) = $client->execute_batch($connection_id, $statement_id, $rows);
+
+  my ($res, $prepare) = $client->prepare($connection_id, 'UPSERT INTO table(F1, F2) VALUES (1, ?)');
+  my $val1 = Avatica::Client::Protocol::TypedValue->new;
+  $val1->set_number_value(1);
+  $val1->set_type(Avatica::Client::Protocol::Rep::LONG());
+  my $val2 = Avatica::Client::Protocol::TypedValue->new;
+  $val2->set_number_value(2);
+  $val2->set_type(Avatica::Client::Protocol::Rep::LONG());
+  my ($res, $result) = $client->execute_batch($connection_id, $statement_id, [[$val1], [$val2]]);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call (required).
+
+=head4 statement_id
+
+The identifier of the created statement (required).
+
+=head4 rows
+
+The list of the list of TypedValue for each parameter on the prepared statement (required).
+
+
+=head2 fetch
+
+This request is used to fetch a batch of rows from a Statement previously created.
+
+  my ($res, $result) = $client->fetch($connection_id, $statement_id, $offset, $frame_max_size);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call.
+
+=head4 statement_id
+
+The identifier of the created statement.
+
+=head4 offset
+
+The positional offset into a result set to fetch.
+
+=head4 frame_max_size
+
+The maximum number of rows to return in the response. Negative means no limit.
+
+
+=head2 sync_results
+
+This request is used to reset a ResultSet's iterator to a specific offset in the Avatica server.
+
+  my ($res, $result) = $client->sync_results($connection_id, $statement_id, $state, $offset);
+
+  # fetch first 6 rows
+  ($res, my $statement) = $client->create_statement($connection_id);
+  ($res, my $execute) = $client->prepare_and_execute($connection_id, $statement->get_statement_id, 'SELECT * FROM table', undef, 2);
+  ($res, my $fetch) = $client->fetch($connection_id, $statement_id, undef, 4);
+  # fetch again first 6 rows
+  my $state = Avatica::Client::Protocol::QueryState->new;
+  $state->set_type(0);
+  $state->set_sql('SELECT * FROM table');
+  $state->set_has_sql(1);
+  ($res, my $sync) = $client->sync_results($connection_id, $statement_id, $state);
+  ($res, $fetch) = $client->fetch($connection_id, $statement_id, undef, 6);
+
+=head3 Parameters
+
+=head4 connection_id
+
+Connection id from open_connection call.
+
+=head4 statement_id
+
+The identifier of the created statement.
+
+=head4 state
+
+The QueryState object.
+
+=head4 offset
+
+The offset into the ResultSet to seek to.
+
+=cut
