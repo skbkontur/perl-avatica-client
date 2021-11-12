@@ -533,6 +533,8 @@ $dynamic->map({ package => 'Avatica.Client.Protocol', prefix => 'Avatica::Client
 1;
 
 __DATA__
+// from https://github.com/apache/calcite-avatica/tree/master/core/src/main/protobuf
+
 syntax = "proto3";
 
 package Avatica.Client.Protocol;
