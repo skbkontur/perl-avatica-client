@@ -63,6 +63,11 @@ sub post_request {
     });
 
     unless ($response->{success}) {
+      # network errors
+      last if $response->{status} == 599;
+      # client errors
+      last if int($response->{status} / 100) == 4;
+      # server errors
       if (int($response->{status} / 100) == 5) {
         sleep(exp -$retry_count);
         next;
@@ -1500,7 +1505,7 @@ This request is used to execute a B<batch of updates> against a PreparedStatemen
   my $val2 = Avatica::Client::Protocol::TypedValue->new;
   $val2->set_number_value(2);
   $val2->set_type(Avatica::Client::Protocol::Rep::LONG());
-  my ($res, $result) = $client->execute_batch($connection_id, $statement_id, [[$val1], [$val2]]);
+  my ($res, $result) = $client->execute_batch($connection_id, $prepare->get_statement->get_id, [[$val1], [$val2]]);
 
 =head3 Parameters
 
