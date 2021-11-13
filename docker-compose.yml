@@ -8,8 +8,8 @@ services:
     image: avatica-client:latest
     volumes:
       - ".:/client"
-    # depends_on:
-    #   - HPQS
+    depends_on:
+      - hpqs
     working_dir: /client
     environment:
       TEST_ONLINE: 'http://hpqs:8765'
