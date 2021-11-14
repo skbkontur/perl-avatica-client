@@ -1304,7 +1304,7 @@ Connection id from open_connection call (required).
 =head4 prop
 
 This hash represents the properties for a given JDBC Connection.
-AutoCommit is a boolean denoting if autoCommit is enabled for transactions.
+AutoCommit is a boolean denoting if AutoCommit is enabled for transactions.
 ReadOnly is a boolean denoting if a JDBC connection is read-only.
 TransactionIsolation is an integer which denotes the level of transactions isolation per the JDBC specification:
   0 = No transactions.
