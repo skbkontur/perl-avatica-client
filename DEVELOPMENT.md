@@ -41,6 +41,11 @@ Install package for spell check:
     prove -l t
     dzil test
 
+Use environment variable TEST_ONLINE=http://avatica.server:1234 to make integrational tests or set TEST_ONLINE to 0 to mock user agent requests.
+
+    TEST_ONLINE=http://hpqs:8765 prove -lv t     # integrational tests with real requests
+    TEST_ONLINE=0 prove -lv t                    # mock/unit tests with no real requests
+
 # BUILD
 
     dzil build
