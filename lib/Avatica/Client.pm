@@ -40,10 +40,7 @@ sub apply {
 
   my ($status, $response_body) = $self->post_request($body);
   if (int($status / 100) != 2) {
-    # network errors
-    return 0, {message => $response_body} if $status == 599;
-    # other errors
-    return 0, $self->parse_error($response_body);
+    return 0, $self->parse_error($status, $response_body);
   }
   my $response = $self->unwrap_response($response_body);
   return 1, $response;
@@ -79,7 +76,6 @@ sub post_request {
   return @$response{qw/status content/};
 }
 
-# params: self, request_name, request
 sub wrap_request {
   my ($self, $request_name, $request) = @_;
   my $wire_msg = Avatica::Client::Protocol::WireMessage->new;
@@ -95,6 +91,17 @@ sub unwrap_response {
 }
 
 sub parse_error {
+  my ($self, $status, $response) = @_;
+
+  my $msg = $status == 599 ?
+      {message => $response} :                 # network errors
+      $self->parse_protobuf_error($response);  # other errors from avatica
+
+  $msg->{http_status} = $status;
+  return $msg;
+}
+
+sub parse_protobuf_error {
   my ($self, $response_body) = @_;
   my $response_encoded = $self->unwrap_response($response_body);
   my $error = Avatica::Client::Protocol::ErrorResponse->decode($response_encoded);
@@ -419,6 +426,8 @@ sub execute {
   if ($param_values && @$param_values) {
     $e->set_parameter_values_list($param_values);
     $e->set_has_parameter_values(1);
+  } else {
+    $e->set_has_parameter_values(0);
   }
   if ($first_frame_max_size) {
     $e->set_first_frame_max_size($first_frame_max_size);
