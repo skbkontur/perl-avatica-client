@@ -28,19 +28,6 @@ use constant JAVA_TO_REP => {
     -3  => Avatica::Client::Protocol::Rep::BYTE_STRING(),       # VARBINARY
     16  => Avatica::Client::Protocol::Rep::BOOLEAN(),           # BOOLEAN
 
-    # These are the Non-standard types defined by Phoenix
-    18  => Avatica::Client::Protocol::Rep::JAVA_SQL_TIME(),     # UNSIGNED_TIME
-    19  => Avatica::Client::Protocol::Rep::JAVA_SQL_DATE(),     # UNSIGNED_DATE
-    15  => Avatica::Client::Protocol::Rep::DOUBLE(),            # UNSIGNED_DOUBLE
-    14  => Avatica::Client::Protocol::Rep::DOUBLE(),            # UNSIGNED_FLOAT
-    9   => Avatica::Client::Protocol::Rep::INTEGER(),           # UNSIGNED_INT
-    10  => Avatica::Client::Protocol::Rep::LONG(),              # UNSIGNED_LONG
-    13  => Avatica::Client::Protocol::Rep::SHORT(),             # UNSIGNED_SMALLINT
-    20  => Avatica::Client::Protocol::Rep::JAVA_SQL_TIMESTAMP(),    # UNSIGNED_TIMESTAMP
-    11  => Avatica::Client::Protocol::Rep::BYTE(),              # UNSIGNED_TINYINT
-
-    # The following are not used by Phoenix, but some of these are used by Avatica for
-    # parameter types
     -7  => Avatica::Client::Protocol::Rep::BOOLEAN(),           # BIT
     7   => Avatica::Client::Protocol::Rep::DOUBLE(),            # REAL
     3   => Avatica::Client::Protocol::Rep::BIG_DECIMAL(),       # DECIMAL
@@ -174,36 +161,11 @@ sub to_jdbc {
 
     $typed_value->set_null(0);
 
-    # Phoenix add base 3000 for array types
-    # https://github.com/apache/phoenix/blob/2a2d9964d29c2e47667114dbc3ca43c0e264a221/phoenix-core/src/main/java/org/apache/phoenix/schema/types/PDataType.java#L518
-    my $is_array = $jdbc_type_id > 2900 && $jdbc_type_id < 3100;
-
-    # Phoenix specific
-    if ($is_array) {
-        my $element_rep = $class->convert_jdbc_to_rep_type($jdbc_type_id - 3000);
-        my $type = $class->REP_TO_TYPE_VALUE->{$element_rep};
-        my $method = "set_$type";
-
-        $typed_value->set_type(Avatica::Client::Protocol::Rep::ARRAY());
-        $typed_value->set_component_type($element_rep);
-
-        for my $v (@$value) {
-            my $tv = Avatica::Client::Protocol::TypedValue->new;
-            unless (defined $v) {
-                $tv->set_null(1);
-                $tv->set_type(Avatica::Client::Protocol::Rep::NULL());
-                $typed_value->add_array_value($tv);
-                next;
-            }
-            $tv->set_type($element_rep);
-            $tv->$method($class->convert_to_jdbc($v, $element_rep));
-            $typed_value->add_array_value($tv);
-        }
-        return $typed_value;
-    }
-
     my $rep = $class->convert_jdbc_to_rep_type($jdbc_type_id);
+    croak "Unknown jdbc type: $jdbc_type_id" unless $rep;
     my $type = $class->REP_TO_TYPE_VALUE->{$rep};
+    croak "Unknown rep type: $rep" unless $type;
+
     my $method = "set_$type";
 
     $typed_value->set_type($rep);
@@ -262,6 +224,7 @@ sub convert_to_jdbc {
     if ($rep == Avatica::Client::Protocol::Rep::JAVA_SQL_TIMESTAMP()) {
         return $value if looks_like_number($value);
         my ($datetime, $milli) = split /\./, $value;
+        $datetime =~ s/[Tt]/ /;
         my $sec = Time::Piece->strptime($datetime, '%Y-%m-%d %H:%M:%S')->epoch;
         return $sec * 1000 + ($milli ? substr($milli . '00', 0, 3) : 0);
     }
