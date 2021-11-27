@@ -285,6 +285,61 @@ sub table_types {
   return ($res, $response);
 }
 
+# return (ret, ResultSetResponse)
+sub primary_keys {
+  my ($self, $connection_id, $catalog, $schema, $table) = @_;
+
+  my ($res, $statement) = $self->create_statement($connection_id);
+  return ($res, $statement) unless $res;
+
+  my $statement_id = $statement->get_statement_id;
+
+  my $qs = Avatica::Client::Protocol::QueryState->new;
+  $qs->set_type(Avatica::Client::Protocol::StateType::METADATA());
+  $qs->set_op(Avatica::Client::Protocol::MetaDataOperation::GET_PRIMARY_KEYS());
+  $qs->set_has_args(1);
+  $qs->set_has_op(1);
+
+  for my $arg ($catalog, $schema, $table) {
+    my $mdoa = Avatica::Client::Protocol::MetaDataOperationArgument->new;
+    if ($arg) {
+      $mdoa->set_type(Avatica::Client::Protocol::MetaDataOperationArgument::ArgumentType::STRING());
+      $mdoa->set_string_value($arg);
+    }
+    else {
+      $mdoa->set_type(Avatica::Client::Protocol::MetaDataOperationArgument::ArgumentType::NULL());
+    }
+    $qs->add_args($mdoa);
+  }
+
+  ($res, my $sync_res) = $self->sync_results($connection_id, $statement_id, $qs);
+  return ($res, $sync_res) unless $res;
+
+  my $s = Avatica::Client::Protocol::Signature->new;
+  # IMPORTANT: many databases have additional columns that need to be specified additionally
+  $s->add_columns($self->_build_column_metadata(1, 'TABLE_CAT', 12));
+  $s->add_columns($self->_build_column_metadata(2, 'TABLE_SCHEM', 12));
+  $s->add_columns($self->_build_column_metadata(3, 'TABLE_NAME', 12));
+  $s->add_columns($self->_build_column_metadata(4, 'COLUMN_NAME', 12));
+  $s->add_columns($self->_build_column_metadata(5, 'KEY_SEQ', 5));
+  $s->add_columns($self->_build_column_metadata(6, 'PK_NAME', 12));
+
+  my $f = Avatica::Client::Protocol::Frame->new;
+  $f->set_offset(0);
+  $f->set_done($sync_res->get_more_results ? 0 : 1);
+
+  my $r = Avatica::Client::Protocol::ResultSetResponse->new;
+  $r->set_signature($s);
+  $r->set_connection_id($connection_id);
+  $r->set_statement_id($statement_id);
+  $r->set_own_statement(1);
+  $r->set_update_count('18446744073709551615');
+  $r->set_metadata($sync_res->get_metadata);
+  $r->set_first_frame($f);
+
+  return (1, $r);
+}
+
 sub connection_sync {
   my ($self, $connection_id, $props) = @_;
 
@@ -526,6 +581,18 @@ sub sync_results {
   $response = Avatica::Client::Protocol::SyncResultsResponse->decode($response);
   return 0, {message => 'missing statement id'} if $response->get_missing_statement;
   return ($res, $response);
+}
+
+sub _build_column_metadata {
+  my ($self_or_class, $ordinal, $column_name, $jdbc_type_id) = @_;
+  my $t = Avatica::Client::Protocol::AvaticaType->new;
+  $t->set_id($jdbc_type_id);
+  my $cmd = Avatica::Client::Protocol::ColumnMetaData->new;
+  $cmd->set_ordinal($ordinal);
+  $cmd->set_column_name($column_name);
+  $cmd->set_nullable(2);
+  $cmd->set_type($t);
+  return $cmd;
 }
 
 sub _data_section {
