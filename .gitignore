@@ -1,3 +1,6 @@
 # Dizt::Zilla
 .build
 workspace.code-workspace
+
+# test
+test/*
