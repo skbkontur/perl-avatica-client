@@ -3,7 +3,7 @@ FROM perl:5.34-buster
 RUN apt-get update && \
     apt-get install --no-install-recommends -y \
         less locales strace lsof vim nano iproute2 tmux \
-        libprotobuf-dev libprotoc-dev g++ libstdc++6 libstdc++-8-dev make openssl libssl-dev spell && \
+        libprotobuf-dev libprotoc-dev g++ libstdc++6 libstdc++-8-dev make cmake openssl libssl-dev spell && \
     apt-get clean
 
 # locale
