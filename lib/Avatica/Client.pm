@@ -10,7 +10,7 @@ use Time::HiRes qw/sleep/;
 
 use Google::ProtocolBuffers::Dynamic 0.30;
 
-use constant MAX_RETRIES => 1;
+use constant MAX_RETRIES => 0;
 use constant CLASS_REQUEST_PREFIX => 'org.apache.calcite.avatica.proto.Requests$';
 
 our $VERSION = '0.002';
@@ -50,7 +50,7 @@ sub post_request {
   my ($self, $body) = @_;
 
   my $response;
-  my $retry_count = $self->max_retries;
+  my $retry_count = $self->max_retries + 1;
   while ($retry_count > 0) {
     $retry_count--;
 
@@ -66,7 +66,7 @@ sub post_request {
       last if int($response->{status} / 100) == 4;
       # server errors
       if (int($response->{status} / 100) == 5) {
-        sleep(exp -$retry_count);
+        sleep(exp -($retry_count - 1)) if $retry_count > 0;
         next;
       }
     }
