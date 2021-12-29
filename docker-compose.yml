@@ -4,7 +4,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: develop/client/Dockerfile
+      dockerfile: develop/Dockerfile
     image: avatica-client:latest
     volumes:
       - ".:/avatica-client"
