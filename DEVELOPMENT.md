@@ -1,10 +1,10 @@
-# INSTALL DEPENDENCIES manully (based on DEBIAN/UBUNTU packages names)
+# INSTALL DEPENDENCIES manually (based on DEBIAN/UBUNTU packages names)
 
 ## OS-LEVEL DEPENDENCES
 
 Install packages:
 
-    apt-get install libprotobuf-dev libprotoc-dev g++ make openssl libssl-dev libstdc++6 libstdc++-8-dev # (or more newer libstdc++-<NUMBER>-dev)
+    apt-get install libprotobuf-dev libprotoc-dev g++ make cmake openssl libssl-dev libstdc++6 libstdc++-8-dev # (or more newer libstdc++-<NUMBER>-dev)
 
 Add path to `cc1` to env var `$PATH`:
 
