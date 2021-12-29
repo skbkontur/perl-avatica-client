@@ -10,9 +10,10 @@ version 0.002
 
 Alexey Stavrov <logioniz@ya.ru>
 
-# CONTRIBUTOR
+# CONTRIBUTORS
 
-Denis Ibaev <dionys@gmail.com>
+- Denis Ibaev <dionys@gmail.com>
+- Ivan Putintsev <uid@rydlab.ru>
 
 # COPYRIGHT AND LICENSE
 
